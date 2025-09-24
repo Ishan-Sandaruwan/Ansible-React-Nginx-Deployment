@@ -29,5 +29,5 @@ cd ansible-react-nginx-deployment
 
 3. Run the Ansible playbook
 ```
-ansible-playbook -i hosts setup_server.yml
+ansible-playbook -i inventory setup_server.yml
 ```
