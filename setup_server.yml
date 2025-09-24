@@ -1,0 +1,77 @@
+---
+- name: Install and configure nginx for static website hosting
+  hosts: target_server
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    user: "ubuntu"
+  become: yes
+  tasks:
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: latest
+        update_cache: yes
+    
+    - name: Add NodeSource Node.js 22 repository
+      shell: curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+      args:
+        executable: /bin/bash
+
+    - name: Install Node.js
+      apt:
+        name: nodejs
+        state: present
+        update_cache: yes
+
+    - name: Verify Node.js version
+      shell: node -v && npm -v
+      register: node_info
+
+    - name: Show installed Node.js & npm version
+      debug:
+        msg: "{{ node_info.stdout }}"
+
+    - name: Clone frontend repository
+      ansible.builtin.git:
+        repo: 'https://github.com/Ishan-Sandaruwan/Sample-React-Vite-App.git'
+        dest: /var/www/frontend
+        version: main
+
+    - name: Build frontend app
+      shell: |
+        cd /var/www/frontend
+        npm install
+        npm run build
+      args:
+        executable: /bin/bash
+
+    - name: Remove default nginx configuration
+      file:
+        path: /etc/nginx/sites-available/default
+        state: absent
+
+    - name: Remove default nginx configuration
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Add nginx configuration
+      copy:
+        force: true
+        src: static-site-config
+        dest: /etc/nginx/sites-available/static-site-config
+        owner: "{{ user }}"
+        group: root
+        mode: '0644'
+
+    - name: Enable website configuration
+      file:
+        src: /etc/nginx/sites-available/static-site-config
+        dest: /etc/nginx/sites-enabled/static-site-config
+        state: link
+
+    - name: Ensure nginx is running
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
